@@ -86,10 +86,12 @@ def get_repo_contributors(repo_df, output_path):
     if os.path.exists(output_path):
         contributors_df = pd.read_csv(output_path)
         if len(contributors_df[contributors_df.login.isna()]) > 0:
+            existing_contributors = contributors_df[contributors_df.login.isna() == False]
             missing_repos = contributors_df[contributors_df.login.isna()].html_url.unique().tolist()
             missing_repos_df = repo_df[repo_df.html_url.isin(missing_repos)]
             missing_repos_df = get_contributors(missing_repos_df, output_path)
-            contributors_df = pd.concat([contributors_df, missing_repos_df])
+            contributors_df = pd.concat([existing_contributors, missing_repos_df])
+            contributors_df.to_csv(output_path, index=False)
     else:
         contributors_df = get_contributors(repo_df, output_path)
     return contributors_df
