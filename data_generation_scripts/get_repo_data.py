@@ -12,7 +12,7 @@ auth_headers = {'Authorization': f'token {auth_token}','User-Agent': 'request'}
 def check_if_new_repos(repo_df):
     query = f"https://api.github.com/search/repositories?q=topic:digital-humanities&per_page=100&page=1"
     try:
-        response = requests.get(query)
+        response = requests.get(query, headers=auth_headers)
         response_data = response.json()
         updated_count = response_data['total_count']
         if updated_count > repo_df.shape[0]:    
@@ -26,7 +26,7 @@ def get_repos_data(output_path):
     for i in tqdm(range(1,7), desc="Getting Repos"):
         query = f"https://api.github.com/search/repositories?q=topic:digital-humanities&per_page=100&page={i}"
         try:
-            response = requests.get(query)
+            response = requests.get(query, headers=auth_headers)
             response_data = response.json()
             response_df = pd.DataFrame.from_dict(response_data['items'])
             response_df['query'] = query
@@ -51,7 +51,7 @@ def get_all_repos_topic_dh(output_path):
     return repo_df
 
 def get_languages(row):
-    response = requests.get(row.languages_url)
+    response = requests.get(row.languages_url, headers=auth_headers)
     return response.json()
 
 def get_repo_languages(repo_df, output_path):
@@ -68,7 +68,7 @@ def get_contributors(repo_df, output_path):
     for _, row in tqdm(repo_df.iterrows(), total=repo_df.shape[0], desc="Getting Contributors"):
         try: 
             url = row.contributors_url
-            response = requests.get(url)
+            response = requests.get(url, headers=auth_headers)
             response_data = response.json()
             df = pd.json_normalize(response_data)
             df['repo_id'] = row.id
