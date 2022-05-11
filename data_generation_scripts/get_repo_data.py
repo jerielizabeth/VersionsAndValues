@@ -96,6 +96,42 @@ def get_repo_contributors(repo_df, output_path):
         contributors_df = get_contributors(repo_df, output_path)
     return contributors_df
 
+def get_commits(repo_df, output_path):
+    commits_rows = []
+    for _, row in tqdm(repo_df.iterrows(), total=repo_df.shape[0], desc="Getting Commits"):
+        try:
+            url = row.commits_url
+            response = requests.get(url, headers=auth_headers)
+            response_data = response.json()
+            df = pd.json_normalize(response_data)
+            df['repo_id'] = row.id
+            df['html_url'] = row.html_url
+            df['full_name'] = row.full_name
+            commits_rows.append(df)
+        except:
+            print(f"Error on getting commits for {row.full_name}")
+            continue
+    commits_df = pd.concat(commits_rows)
+    commits_df.to_csv(output_path, index=False)
+    return commits_df
+
+def get_repos_commits(repo_df, output_path):
+    if os.path.exists(output_path):
+        commits_df = pd.read_csv(output_path)
+        repos = repo_df.html_url.unique().tolist()
+        existing_repos = commits_df[commits_df.html_url.isin(repos)].html_url.unique().tolist()
+        if len(existing_repos) != len(repos):
+            missing_commits_repos = set(repos) - set(existing_repos)
+            missing_repos_df = repo_df[repo_df.html_url.isin(missing_commits_repos)]
+            missing_repos_df = get_commits(missing_repos_df, output_path)
+            commits_df = pd.concat([commits_df, missing_repos_df])
+            commits_df.to_csv(output_path, index=False)
+    else:
+        tqdm.pandas(desc="Getting Commits")
+        repo_df['commits'] = repo_df.progress_apply(get_commits, axis=1)
+        repo_df.to_csv(output_path, index=False)
+    return repo_df
+
 if __name__ == "__main__":
     repo_df = get_all_repos_topic_dh('../data/repos_topic_dh.csv')
     repo_languages_df = get_repo_languages(repo_df, '../data/repos_topic_dh_languages.csv')
